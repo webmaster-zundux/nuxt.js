@@ -9,13 +9,13 @@ import uniq from 'lodash/uniq'
 import { isJS, isCSS } from './util'
 
 export default class VueSSRClientPlugin {
-  constructor(options = {}) {
+  constructor (options = {}) {
     this.options = Object.assign({
       filename: null
     }, options)
   }
 
-  apply(compiler) {
+  apply (compiler) {
     compiler.hooks.emit.tapAsync('vue-client-plugin', (compilation, cb) => {
       const stats = compilation.getStats().toJson()
 
@@ -52,7 +52,7 @@ export default class VueSSRClientPlugin {
       stats.modules.forEach((m) => {
         // Ignore modules duplicated in multiple chunks
         if (m.chunks.length === 1) {
-          const cid = m.chunks[0]
+          const [cid] = m.chunks
           const chunk = stats.chunks.find(c => c.id === cid)
           if (!chunk || !chunk.files) {
             return

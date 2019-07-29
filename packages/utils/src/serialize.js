@@ -1,6 +1,6 @@
 import serialize from 'serialize-javascript'
 
-export function normalizeFunctions(obj) {
+export function normalizeFunctions (obj) {
   if (typeof obj !== 'object' || Array.isArray(obj) || obj === null) {
     return obj
   }
@@ -29,7 +29,7 @@ export function normalizeFunctions(obj) {
   return obj
 }
 
-export function serializeFunction(func) {
+export function serializeFunction (func) {
   let open = false
   func = normalizeFunctions(func)
   return serialize(func)
@@ -45,6 +45,7 @@ export function serializeFunction(func) {
       }
     })
     .replace(`${func.name || 'function'}(`, 'function (')
+    .replace(`function function`, `function`)
 }
 
 serializeFunction.internalFunctionRE = /^(\s*)(?!(?:if)|(?:for)|(?:while)|(?:switch))(\w+)\s*\((.*?)\)\s*\{/gm

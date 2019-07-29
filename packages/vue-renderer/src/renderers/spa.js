@@ -1,4 +1,5 @@
 import { extname } from 'path'
+import cloneDeep from 'lodash/cloneDeep'
 import Vue from 'vue'
 import VueMeta from 'vue-meta'
 import { createRenderer } from 'vue-server-renderer'
@@ -7,7 +8,7 @@ import { isModernRequest } from '@nuxt/utils'
 import BaseRenderer from './base'
 
 export default class SPARenderer extends BaseRenderer {
-  constructor(serverContext) {
+  constructor (serverContext) {
     super(serverContext)
 
     this.cache = new LRU()
@@ -22,11 +23,11 @@ export default class SPARenderer extends BaseRenderer {
     })
   }
 
-  createRenderer() {
+  createRenderer () {
     return createRenderer()
   }
 
-  async getMeta() {
+  async getMeta () {
     const vm = new Vue({
       render: h => h(), // Render empty html tag
       head: this.options.head || {}
@@ -35,7 +36,7 @@ export default class SPARenderer extends BaseRenderer {
     return vm.$meta().inject()
   }
 
-  async render(renderContext) {
+  async render (renderContext) {
     const { url = '/', req = {}, _generate } = renderContext
     const modernMode = this.options.modern
     const modern = (modernMode && _generate) || isModernRequest(req, modernMode)
@@ -43,7 +44,9 @@ export default class SPARenderer extends BaseRenderer {
     let meta = this.cache.get(cacheKey)
 
     if (meta) {
-      return meta
+      // Return a copy of the content, so that future
+      // modifications do not effect the data in cache
+      return cloneDeep(meta)
     }
 
     meta = {
@@ -106,7 +109,8 @@ export default class SPARenderer extends BaseRenderer {
             if (asType === 'font') {
               extra = ` type="font/${extension}"${cors ? '' : ' crossorigin'}`
             }
-            return `<link rel="${modern ? 'module' : ''}preload"${cors} href="${publicPath}${file}"${
+            const rel = modern && asType === 'script' ? 'modulepreload' : 'preload'
+            return `<link rel="${rel}"${cors} href="${publicPath}${file}"${
               asType !== '' ? ` as="${asType}"` : ''}${extra}>`
           })
           .join('')
@@ -137,7 +141,7 @@ export default class SPARenderer extends BaseRenderer {
     }
 
     // Call spa:templateParams hook
-    this.serverContext.nuxt.callHook('vue-renderer:spa:templateParams', templateParams)
+    await this.serverContext.nuxt.callHook('vue-renderer:spa:templateParams', templateParams)
 
     // Render with SPA template
     const html = this.renderTemplate(this.serverContext.resources.spaTemplate, templateParams)
@@ -149,10 +153,12 @@ export default class SPARenderer extends BaseRenderer {
     // Set meta tags inside cache
     this.cache.set(cacheKey, content)
 
-    return content
+    // Return a copy of the content, so that future
+    // modifications do not effect the data in cache
+    return cloneDeep(content)
   }
 
-  static normalizeFile(file) {
+  static normalizeFile (file) {
     const withoutQuery = file.replace(/\?.*/, '')
     const extension = extname(withoutQuery).slice(1)
     return {
@@ -163,7 +169,7 @@ export default class SPARenderer extends BaseRenderer {
     }
   }
 
-  static getPreloadType(ext) {
+  static getPreloadType (ext) {
     if (ext === 'js') {
       return 'script'
     } else if (ext === 'css') {

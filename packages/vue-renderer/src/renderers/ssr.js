@@ -1,12 +1,14 @@
 import path from 'path'
 import crypto from 'crypto'
+import { format } from 'util'
 import fs from 'fs-extra'
+import consola from 'consola'
 import devalue from '@nuxt/devalue'
 import { createBundleRenderer } from 'vue-server-renderer'
 import BaseRenderer from './base'
 
 export default class SSRRenderer extends BaseRenderer {
-  get rendererOptions() {
+  get rendererOptions () {
     const hasModules = fs.existsSync(path.resolve(this.options.rootDir, 'node_modules'))
 
     return {
@@ -17,19 +19,19 @@ export default class SSRRenderer extends BaseRenderer {
     }
   }
 
-  renderScripts(renderContext) {
+  renderScripts (renderContext) {
     return renderContext.renderScripts()
   }
 
-  getPreloadFiles(renderContext) {
+  getPreloadFiles (renderContext) {
     return renderContext.getPreloadFiles()
   }
 
-  renderResourceHints(renderContext) {
+  renderResourceHints (renderContext) {
     return renderContext.renderResourceHints()
   }
 
-  createRenderer() {
+  createRenderer () {
     // Create bundle renderer for SSR
     return createBundleRenderer(
       this.serverContext.resources.serverManifest,
@@ -37,12 +39,39 @@ export default class SSRRenderer extends BaseRenderer {
     )
   }
 
-  async render(renderContext) {
+  useSSRLog () {
+    if (!this.options.render.ssrLog) {
+      return
+    }
+    const logs = []
+    const devReporter = {
+      log (logObj) {
+        logs.push({
+          ...logObj,
+          args: logObj.args.map(arg => format(arg))
+        })
+      }
+    }
+    consola.addReporter(devReporter)
+
+    return () => {
+      consola.removeReporter(devReporter)
+      return logs
+    }
+  }
+
+  async render (renderContext) {
     // Call ssr:context hook to extend context from modules
     await this.serverContext.nuxt.callHook('vue-renderer:ssr:prepareContext', renderContext)
 
+    const getSSRLog = this.useSSRLog()
+
     // Call Vue renderer renderToString
     let APP = await this.vueRenderer.renderToString(renderContext)
+
+    if (typeof getSSRLog === 'function') {
+      renderContext.nuxt.logs = getSSRLog()
+    }
 
     // Call ssr:context hook
     await this.serverContext.nuxt.callHook('vue-renderer:ssr:context', renderContext)
@@ -64,13 +93,16 @@ export default class SSRRenderer extends BaseRenderer {
       m.script.text() +
       m.noscript.text()
 
+    // Check if we need to inject scripts and state
+    const shouldInjectScripts = this.options.render.injectScripts !== false
+
     // Add <base href=""> meta if router base specified
     if (this.options._routerBaseSpecified) {
       HEAD += `<base href="${this.options.router.base}">`
     }
 
     // Inject resource hints
-    if (this.options.render.resourceHints) {
+    if (this.options.render.resourceHints && shouldInjectScripts) {
       HEAD += this.renderResourceHints(renderContext)
     }
 
@@ -79,7 +111,9 @@ export default class SSRRenderer extends BaseRenderer {
 
     // Serialize state
     const serializedSession = `window.${this.serverContext.globals.context}=${devalue(renderContext.nuxt)};`
-    APP += `<script>${serializedSession}</script>`
+    if (shouldInjectScripts) {
+      APP += `<script>${serializedSession}</script>`
+    }
 
     // Calculate CSP hashes
     const { csp } = this.options.render
@@ -87,7 +121,7 @@ export default class SSRRenderer extends BaseRenderer {
     if (csp) {
       // Only add the hash if 'unsafe-inline' rule isn't present to avoid conflicts (#5387)
       const containsUnsafeInlineScriptSrc = csp.policies && csp.policies['script-src'] && csp.policies['script-src'].includes(`'unsafe-inline'`)
-      if (!containsUnsafeInlineScriptSrc) {
+      if (csp.unsafeInlineCompatiblity || !containsUnsafeInlineScriptSrc) {
         const hash = crypto.createHash(csp.hashAlgorithm)
         hash.update(serializedSession)
         cspScriptSrcHashes.push(`'${csp.hashAlgorithm}-${hash.digest('base64')}'`)
@@ -103,7 +137,9 @@ export default class SSRRenderer extends BaseRenderer {
     }
 
     // Prepend scripts
-    APP += this.renderScripts(renderContext)
+    if (shouldInjectScripts) {
+      APP += this.renderScripts(renderContext)
+    }
     APP += m.script.text({ body: true })
     APP += m.noscript.text({ body: true })
 
