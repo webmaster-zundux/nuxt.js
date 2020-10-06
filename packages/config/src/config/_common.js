@@ -1,5 +1,6 @@
 import capitalize from 'lodash/capitalize'
 import env from 'std-env'
+import { TARGETS } from '@nuxt/utils'
 
 export default () => ({
   // Env
@@ -8,12 +9,26 @@ export default () => ({
   debug: undefined, // = dev
   env: {},
 
-  // Mode
-  mode: 'universal',
+  createRequire: undefined,
+
+  // Target
+  target: TARGETS.server,
+
+  // Rendering
+  ssr: true,
+
+  // Mode (deprecated)
+  mode: undefined,
+
+  // Modern
   modern: undefined,
 
-  // Globals
-  globalName: `nuxt`,
+  // Modules
+  modules: [],
+  buildModules: [],
+  _modules: [],
+
+  globalName: undefined,
   globals: {
     id: globalName => `__${globalName}`,
     nuxt: globalName => `$${globalName}`,
@@ -47,28 +62,20 @@ export default () => ({
   alias: {},
 
   // Ignores
+  ignoreOptions: undefined,
   ignorePrefix: '-',
   ignore: [
     '**/*.test.*',
     '**/*.spec.*'
   ],
 
-  // Generate
-  generate: {
-    dir: 'dist',
-    routes: [],
-    exclude: [],
-    concurrency: 500,
-    interval: 0,
-    subFolders: true,
-    fallback: '200.html'
-  },
-
   // Watch
   watch: [],
   watchers: {
     rewatchOnRawEvents: undefined,
-    webpack: {},
+    webpack: {
+      aggregateTimeout: 1000
+    },
     chokidar: {
       ignoreInitial: true
     }
@@ -78,5 +85,9 @@ export default () => ({
   editor: undefined,
 
   // Hooks
-  hooks: null
+  hooks: null,
+
+  // runtimeConfig
+  privateRuntimeConfig: {},
+  publicRuntimeConfig: {}
 })

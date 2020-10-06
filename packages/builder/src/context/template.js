@@ -4,13 +4,14 @@ import uniqBy from 'lodash/uniqBy'
 import serialize from 'serialize-javascript'
 
 import devalue from '@nuxt/devalue'
-import { r, wp, wChunk, serializeFunction } from '@nuxt/utils'
+import { r, wp, wChunk, serializeFunction, isFullStatic } from '@nuxt/utils'
 
 export default class TemplateContext {
   constructor (builder, options) {
     this.templateFiles = Array.from(builder.template.files)
     this.templateVars = {
       nuxtOptions: options,
+      features: options.features,
       extensions: options.extensions
         .map(ext => ext.replace(/^\./, ''))
         .join('|'),
@@ -19,6 +20,7 @@ export default class TemplateContext {
       uniqBy,
       isDev: options.dev,
       isTest: options.test,
+      isFullStatic: isFullStatic(options),
       debug: options.debug,
       buildIndicator: options.dev && options.build.indicator,
       vue: { config: options.vue.config },
@@ -27,7 +29,7 @@ export default class TemplateContext {
       router: options.router,
       env: options.env,
       head: options.head,
-      store: options.store,
+      store: options.features.store ? options.store : false,
       globalName: options.globalName,
       globals: builder.globals,
       css: options.css,

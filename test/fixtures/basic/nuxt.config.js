@@ -32,16 +32,18 @@ export default {
       '/users/1',
       '/users/2',
       '/тест雨',
+      '/skip-on-fail/success',
+      '/skip-on-fail/fail',
       { route: '/users/3', payload: { id: 3000 } }
     ],
-    interval: 200,
-    subFolders: true
+    interval: 200
   },
   head () {
     return {
       titleTemplate (titleChunk) {
         return titleChunk ? `${titleChunk} - Nuxt.js` : 'Nuxt.js'
-      }
+      },
+      meta: [{ charset: 'utf-8' }]
     }
   },
   modulesDir: path.join(__dirname, '..', '..', '..', 'node_modules'),
@@ -64,9 +66,11 @@ export default {
     '': true
   },
   pageTransition: false,
+  components: true,
   plugins: [
     '~/plugins/vuex-module',
     '~/plugins/dir-plugin',
+    '~/plugins/router-guard',
     '~/plugins/inject'
   ],
   serverMiddleware: [
@@ -75,9 +79,16 @@ export default {
       handler: (_, res) => res.end('Works!')
     }
   ],
+  css: [
+    '~assets/app.css'
+  ],
   build: {
     scopeHoisting: true,
     publicPath: '',
+    followSymlinks: true,
+    splitChunks: {
+      layouts: true
+    },
     postcss: {
       preset: {
         features: {

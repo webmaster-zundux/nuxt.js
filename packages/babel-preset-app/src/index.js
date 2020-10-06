@@ -4,7 +4,7 @@ const coreJsMeta = {
       es6: 'es6',
       es7: 'es7'
     },
-    builtIns: '@babel/preset-env/data/built-ins.json.js'
+    builtIns: '@babel/compat-data/corejs2-built-ins'
   },
   3: {
     prefixes: {
@@ -15,8 +15,16 @@ const coreJsMeta = {
   }
 }
 
+function getMajorVersion (version) {
+  if (typeof version === 'number') {
+    return Math.floor(version)
+  } else {
+    return Number(version.split('.')[0])
+  }
+}
+
 function getDefaultPolyfills (corejs) {
-  const { prefixes: { es6, es7 } } = coreJsMeta[corejs.version]
+  const { prefixes: { es6, es7 } } = coreJsMeta[getMajorVersion(corejs.version)]
   return [
     // Promise polyfill alone doesn't work in IE,
     // Needs this as well. see: #1642
@@ -32,34 +40,37 @@ function getDefaultPolyfills (corejs) {
 }
 
 function getPolyfills (targets, includes, { ignoreBrowserslistConfig, configPath, corejs }) {
-  const { isPluginRequired } = require('@babel/preset-env')
-  const builtInsList = require(coreJsMeta[corejs.version].builtIns)
-  const getTargets = require('@babel/preset-env/lib/targets-parser').default
+  const { default: getTargets, isRequired } = require('@babel/helper-compilation-targets')
+  const builtInsList = require(coreJsMeta[getMajorVersion(corejs.version)].builtIns)
   const builtInTargets = getTargets(targets, {
     ignoreBrowserslistConfig,
     configPath
   })
 
-  return includes.filter(item => isPluginRequired(builtInTargets, builtInsList[item]))
+  return includes.filter(item => isRequired(
+    'nuxt-polyfills',
+    builtInTargets,
+    {
+      compatData: { 'nuxt-polyfills': builtInsList[item] }
+    }
+  ))
 }
 
-module.exports = (context, options = {}) => {
+module.exports = (api, options = {}) => {
   const presets = []
   const plugins = []
 
-  const modern = options.modern === undefined
-    ? context.env('modern')
-    : Boolean(options.modern)
+  const envName = api.env()
 
   const {
+    bugfixes,
     polyfills: userPolyfills,
-    buildTarget,
     loose = false,
     debug = false,
     useBuiltIns = 'usage',
     modules = false,
     spec,
-    ignoreBrowserslistConfig = modern,
+    ignoreBrowserslistConfig = envName === 'modern',
     configPath,
     include,
     exclude,
@@ -76,28 +87,40 @@ module.exports = (context, options = {}) => {
     corejs = { version: Number(corejs) }
   }
 
-  let { targets } = options
-  if (modern === true) {
-    targets = { esmodules: true }
-  } else if (targets === undefined && typeof buildTarget === 'string') {
-    targets = buildTarget === 'server' ? { node: 'current' } : { ie: 9 }
+  const defaultTargets = {
+    server: { node: 'current' },
+    client: { ie: 9 },
+    modern: { esmodules: true }
   }
 
-  let polyfills
-  if (modern === false && useBuiltIns === 'usage' && buildTarget === 'client') {
-    polyfills = getPolyfills(targets, userPolyfills || getDefaultPolyfills(corejs), {
-      ignoreBrowserslistConfig,
-      configPath,
-      corejs
-    })
+  let { targets = defaultTargets[envName] } = options
+
+  // modern mode can only be { esmodules: true }
+  if (envName === 'modern') {
+    targets = defaultTargets.modern
+  }
+
+  const polyfills = []
+
+  if (envName === 'client' && useBuiltIns === 'usage') {
+    polyfills.push(
+      ...getPolyfills(
+        targets,
+        userPolyfills || getDefaultPolyfills(corejs),
+        {
+          ignoreBrowserslistConfig,
+          configPath,
+          corejs
+        }
+      )
+    )
     plugins.push([require('./polyfills-plugin'), { polyfills }])
-  } else {
-    polyfills = []
   }
 
   // Pass options along to babel-preset-env
   presets.push([
     require('@babel/preset-env'), {
+      bugfixes,
       spec,
       loose,
       debug,
@@ -120,12 +143,11 @@ module.exports = (context, options = {}) => {
   }
 
   plugins.push(
-    require('@babel/plugin-syntax-dynamic-import'),
     [require('@babel/plugin-proposal-decorators'), {
       decoratorsBeforeExport,
       legacy: decoratorsLegacy !== false
     }],
-    [require('@babel/plugin-proposal-class-properties'), { loose }]
+    [require('@babel/plugin-proposal-class-properties'), { loose: true }]
   )
 
   // Transform runtime, but only for helpers
@@ -133,11 +155,12 @@ module.exports = (context, options = {}) => {
     regenerator: useBuiltIns !== 'usage',
     corejs: false,
     helpers: useBuiltIns === 'usage',
-    useESModules: buildTarget !== 'server',
+    useESModules: envName !== 'server',
     absoluteRuntime
   }])
 
   return {
+    sourceType: 'unambiguous',
     presets,
     plugins
   }

@@ -1,3 +1,8 @@
+const fs = require('fs')
+const path = require('path')
+
+const corePackages = fs.readdirSync(path.resolve(__dirname, 'packages'))
+
 module.exports = {
   testEnvironment: 'node',
 
@@ -5,11 +10,17 @@ module.exports = {
 
   forceExit: true,
 
+  roots: [
+    '<rootDir>/packages',
+    '<rootDir>/test'
+  ],
+
   // https://github.com/facebook/jest/pull/6747 fix warning here
   // But its performance overhead is pretty bad (30+%).
   // detectOpenHandles: true
 
-  setupFilesAfterEnv: ['./test/utils/setup'],
+  setupFilesAfterEnv: ['./test/utils/setup-env'],
+  setupFiles: ['./test/utils/setup'],
 
   coverageDirectory: './coverage',
 
@@ -43,8 +54,7 @@ module.exports = {
     'json'
   ],
 
-  reporters: [
-    'default',
-    ['jest-junit', { outputDirectory: 'reports/junit' }]
-  ]
+  moduleNameMapper: {
+    [`@nuxt/(${corePackages.join('|')})(/?.*)$`]: '<rootDir>/packages/$1/src/$2'
+  }
 }

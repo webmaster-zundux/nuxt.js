@@ -3,28 +3,23 @@ import env from 'std-env'
 export default () => ({
   quiet: Boolean(env.ci || env.test),
   analyze: false,
-  indicator: {
-    position: 'bottom-right',
-    backgroundColor: '#2E495E',
-    color: '#00C48D'
-  },
   profile: process.argv.includes('--profile'),
   extractCSS: false,
-  crossorigin: undefined,
   cssSourceMap: undefined,
   ssr: undefined,
   parallel: false,
   cache: false,
   standalone: false,
   publicPath: '/_nuxt/',
+  serverURLPolyfill: 'url',
   filenames: {
     // { isDev, isClient, isServer }
-    app: ({ isDev, isModern }) => isDev ? `${isModern ? 'modern-' : ''}[name].js` : '[chunkhash].js',
-    chunk: ({ isDev, isModern }) => isDev ? `${isModern ? 'modern-' : ''}[name].js` : '[chunkhash].js',
-    css: ({ isDev }) => isDev ? '[name].css' : '[contenthash].css',
-    img: ({ isDev }) => isDev ? '[path][name].[ext]' : 'img/[hash:7].[ext]',
-    font: ({ isDev }) => isDev ? '[path][name].[ext]' : 'fonts/[hash:7].[ext]',
-    video: ({ isDev }) => isDev ? '[path][name].[ext]' : 'videos/[hash:7].[ext]'
+    app: ({ isDev, isModern }) => isDev ? `[name]${isModern ? '.modern' : ''}.js` : `[contenthash:7]${isModern ? '.modern' : ''}.js`,
+    chunk: ({ isDev, isModern }) => isDev ? `[name]${isModern ? '.modern' : ''}.js` : `[contenthash:7]${isModern ? '.modern' : ''}.js`,
+    css: ({ isDev }) => isDev ? '[name].css' : '[name].[contenthash:7].css',
+    img: ({ isDev }) => isDev ? '[path][name].[ext]' : 'img/[name].[contenthash:7].[ext]',
+    font: ({ isDev }) => isDev ? '[path][name].[ext]' : 'fonts/[name].[contenthash:7].[ext]',
+    video: ({ isDev }) => isDev ? '[path][name].[ext]' : 'videos/[name].[contenthash:7].[ext]'
   },
   loaders: {
     file: {},
@@ -47,7 +42,9 @@ export default () => ({
     },
     less: {},
     sass: {
-      indentedSyntax: true
+      sassOptions: {
+        indentedSyntax: true
+      }
     },
     scss: {},
     stylus: {},
@@ -57,6 +54,7 @@ export default () => ({
   plugins: [],
   terser: {},
   hardSource: false,
+  aggressiveCodeRemoval: false,
   optimizeCSS: undefined,
   optimization: {
     runtimeChunk: 'single',
@@ -64,8 +62,7 @@ export default () => ({
     minimizer: undefined,
     splitChunks: {
       chunks: 'all',
-      automaticNameDelimiter: '.',
-      name: undefined,
+      automaticNameDelimiter: '/',
       cacheGroups: {}
     }
   },
@@ -74,6 +71,7 @@ export default () => ({
     pages: true,
     commons: true
   },
+  corejs: 'auto',
   babel: {
     configFile: false,
     babelrc: false,
@@ -116,5 +114,14 @@ export default () => ({
   },
   friendlyErrors: true,
   additionalExtensions: [],
-  warningIgnoreFilters: []
+  warningIgnoreFilters: [],
+
+  followSymlinks: false,
+
+  loadingScreen: {},
+  indicator: {
+    position: 'bottom-right',
+    backgroundColor: '#2E495E',
+    color: '#00C48D'
+  }
 })

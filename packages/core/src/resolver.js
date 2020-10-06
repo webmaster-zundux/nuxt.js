@@ -1,9 +1,13 @@
 import { resolve, join } from 'path'
 import fs from 'fs-extra'
 import consola from 'consola'
-import esm from 'esm'
 
-import { startsWithRootAlias, startsWithSrcAlias } from '@nuxt/utils'
+import {
+  startsWithRootAlias,
+  startsWithSrcAlias,
+  isExternalDependency,
+  clearRequireCache
+} from '@nuxt/utils'
 
 export default class Resolver {
   constructor (nuxt) {
@@ -16,8 +20,8 @@ export default class Resolver {
     this.resolveModule = this.resolveModule.bind(this)
     this.requireModule = this.requireModule.bind(this)
 
-    // ESM Loader
-    this.esm = esm(module)
+    const { createRequire } = this.options
+    this._require = createRequire ? createRequire(module) : module.require
 
     this._resolve = require.resolve
   }
@@ -100,8 +104,9 @@ export default class Resolver {
         return resolvedPath + '.' + ext
       }
 
-      if (isDirectory && fs.existsSync(resolvedPath + '/index.' + ext)) {
-        return resolvedPath + '/index.' + ext
+      const resolvedPathwithIndex = join(resolvedPath, 'index.' + ext)
+      if (isDirectory && fs.existsSync(resolvedPathwithIndex)) {
+        return resolvedPathwithIndex
       }
     }
 
@@ -138,15 +143,23 @@ export default class Resolver {
       lastError = e
     }
 
+    const isExternal = isExternalDependency(resolvedPath)
+
+    // in dev mode make sure to clear the require cache so after
+    // a dev server restart any changed file is reloaded
+    if (this.options.dev && !isExternal) {
+      clearRequireCache(resolvedPath)
+    }
+
     // By default use esm only for js,mjs files outside of node_modules
     if (useESM === undefined) {
-      useESM = /.(js|mjs)$/.test(resolvedPath) && !/node_modules/.test(resolvedPath)
+      useESM = !isExternal && /.(js|mjs)$/.test(resolvedPath)
     }
 
     // Try to require
     try {
       if (useESM) {
-        requiredModule = this.esm(resolvedPath)
+        requiredModule = this._require(resolvedPath)
       } else {
         requiredModule = require(resolvedPath)
       }

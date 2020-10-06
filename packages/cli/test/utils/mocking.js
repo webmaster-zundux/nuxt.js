@@ -12,6 +12,9 @@ jest.mock('../../src/imports', () => {
     generator: jest.fn().mockImplementation(() => ({
       Generator () {}
     })),
+    server: () => ({
+      Listener: class { listen () { } }
+    }),
     webpack: jest.fn().mockImplementation(() => ({
       BundleBuilder () {}
     }))
@@ -22,6 +25,10 @@ export const mockGetNuxt = (options = {}, implementation) => {
   Command.prototype.getNuxt = jest.fn().mockImplementationOnce(() => {
     return Object.assign({
       hook: jest.fn(),
+      server: {
+        listen: jest.fn()
+      },
+      close: jest.fn(),
       options
     }, implementation)
   })
@@ -68,8 +75,9 @@ export const mockGetNuxtStart = (ssr) => {
   return { listen }
 }
 
-export const mockGetNuxtConfig = () => {
+export const mockGetNuxtConfig = (config = {}) => {
   const spy = jest.fn()
+  spy.mockReturnValue(config)
   Command.prototype.getNuxtConfig = spy
   return spy
 }
@@ -83,6 +91,7 @@ export const mockNuxt = (implementation) => {
       }
     },
     options: {},
+    callHook: jest.fn(),
     clearHook: jest.fn(),
     clearHooks: jest.fn(),
     close: jest.fn(),

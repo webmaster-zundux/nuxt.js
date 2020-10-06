@@ -2,7 +2,12 @@ export const createNuxt = () => ({
   options: {
     globalName: 'global_name',
     globals: [],
-    build: {},
+    build: {
+      watch: []
+    },
+    render: {
+      ssr: true
+    },
     router: {},
     dir: {
       app: 'app'

@@ -4,15 +4,17 @@
 */
 
 import EventEmitter from 'events'
+import HtmlWebpackPlugin from 'html-webpack-plugin'
 import { safariNoModuleFix } from '@nuxt/utils'
 
-const assetsMap = {}
-const watcher = new EventEmitter()
+const legacyTemplateTags = {}
+const legacyTemplateWatcher = new EventEmitter()
 
 export default class ModernModePlugin {
-  constructor ({ targetDir, isModernBuild }) {
+  constructor ({ targetDir, isModernBuild, noUnsafeInline }) {
     this.targetDir = targetDir
     this.isModernBuild = isModernBuild
+    this.noUnsafeInline = noUnsafeInline
   }
 
   apply (compiler) {
@@ -23,46 +25,39 @@ export default class ModernModePlugin {
     }
   }
 
-  set assets ({ name, content }) {
-    assetsMap[name] = content
-    watcher.emit(name)
-  }
-
-  getAssets (name) {
-    return assetsMap[name] ||
-      new Promise((resolve) => {
-        watcher.once(name, () => {
-          return assetsMap[name] && resolve(assetsMap[name])
-        })
-        return assetsMap[name] && resolve(assetsMap[name])
+  getLegacyTemplateTags (name) {
+    return new Promise((resolve) => {
+      const tags = legacyTemplateTags[name]
+      if (tags) {
+        return resolve(tags)
+      }
+      return legacyTemplateWatcher.once(name, () => {
+        const tags = legacyTemplateTags[name]
+        return tags && resolve(tags)
       })
+    })
   }
 
   applyLegacy (compiler) {
-    const ID = `nuxt-legacy-bundle`
+    const ID = 'nuxt-legacy-bundle'
     compiler.hooks.compilation.tap(ID, (compilation) => {
-      // For html-webpack-plugin 4.0
-      // HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(ID, async (data, cb) => {
-      compilation.hooks.htmlWebpackPluginAlterAssetTags.tapAsync(ID, (data, cb) => {
-        // get stats, write to disk
-        this.assets = {
-          name: data.plugin.options.filename,
-          content: data.body
-        }
-
-        cb()
+      HtmlWebpackPlugin.getHooks(compilation).alterAssetTagGroups.tap(ID, (data) => {
+        HtmlWebpackPlugin.getHooks(compilation).afterEmit.tap(ID, ({ outputName }) => {
+          // get stats, write to disk
+          legacyTemplateTags[data.plugin.options.filename] = data.bodyTags
+          legacyTemplateWatcher.emit(outputName)
+        })
+        return data
       })
     })
   }
 
   applyModern (compiler) {
-    const ID = `nuxt-modern-bundle`
+    const ID = 'nuxt-modern-bundle'
     compiler.hooks.compilation.tap(ID, (compilation) => {
-      // For html-webpack-plugin 4.0
-      // HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(ID, async (data, cb) => {
-      compilation.hooks.htmlWebpackPluginAlterAssetTags.tapAsync(ID, async (data, cb) => {
+      HtmlWebpackPlugin.getHooks(compilation).alterAssetTagGroups.tapPromise(ID, async (data) => {
         // use <script type="module"> for modern assets
-        data.body.forEach((tag) => {
+        data.bodyTags.forEach((tag) => {
           if (tag.tagName === 'script' && tag.attributes) {
             tag.attributes.type = 'module'
           }
@@ -70,7 +65,7 @@ export default class ModernModePlugin {
 
         // use <link rel="modulepreload"> instead of <link rel="preload">
         // for modern assets
-        data.head.forEach((tag) => {
+        data.headTags.forEach((tag) => {
           if (tag.tagName === 'link' &&
               tag.attributes.rel === 'preload' &&
               tag.attributes.as === 'script') {
@@ -80,23 +75,46 @@ export default class ModernModePlugin {
 
         // inject links for legacy assets as <script nomodule>
         const fileName = data.plugin.options.filename
-        const legacyAssets = (await this.getAssets(fileName))
+        const legacyScriptTags = (await this.getLegacyTemplateTags(fileName))
           .filter(a => a.tagName === 'script' && a.attributes)
 
-        // inject Safari 10 nomodule fix
-        data.body.push({
-          tagName: 'script',
-          closeTag: true,
-          innerHTML: safariNoModuleFix
-        })
-
-        for (const a of legacyAssets) {
+        for (const a of legacyScriptTags) {
           a.attributes.nomodule = true
-          data.body.push(a)
+          data.bodyTags.push(a)
         }
 
-        delete assetsMap[fileName]
-        cb()
+        if (this.noUnsafeInline) {
+          // inject the fix as an external script
+          const safariFixFilename = 'safari-nomodule-fix.js'
+          const safariFixPath = legacyScriptTags[0].attributes.src
+            .split('/')
+            .slice(0, -1)
+            .concat([safariFixFilename])
+            .join('/')
+
+          compilation.assets[safariFixFilename] = {
+            source: () => Buffer.from(safariNoModuleFix),
+            size: () => Buffer.byteLength(safariNoModuleFix)
+          }
+          data.bodyTags.push({
+            tagName: 'script',
+            closeTag: true,
+            attributes: {
+              src: safariFixPath
+            }
+          })
+        } else {
+          // inject Safari 10 nomodule fix
+          data.bodyTags.push({
+            tagName: 'script',
+            closeTag: true,
+            innerHTML: safariNoModuleFix
+          })
+        }
+
+        delete legacyTemplateTags[fileName]
+
+        return data
       })
     })
   }

@@ -3,10 +3,12 @@
 exports[`config should return default nuxt configurations 1`] = `
 Object {
   "ErrorPage": null,
+  "_modules": Array [],
   "_nuxtConfigFile": undefined,
   "alias": Object {},
   "build": Object {
     "additionalExtensions": Array [],
+    "aggressiveCodeRemoval": false,
     "analyze": false,
     "babel": Object {
       "babelrc": false,
@@ -14,7 +16,7 @@ Object {
       "configFile": false,
     },
     "cache": false,
-    "crossorigin": undefined,
+    "corejs": "auto",
     "cssSourceMap": undefined,
     "devMiddleware": Object {},
     "extractCSS": false,
@@ -26,6 +28,7 @@ Object {
       "img": [Function],
       "video": [Function],
     },
+    "followSymlinks": false,
     "friendlyErrors": true,
     "hardSource": false,
     "hotMiddleware": Object {},
@@ -64,7 +67,9 @@ Object {
       "less": Object {},
       "pugPlain": Object {},
       "sass": Object {
-        "indentedSyntax": true,
+        "sassOptions": Object {
+          "indentedSyntax": true,
+        },
       },
       "scss": Object {},
       "stylus": Object {},
@@ -78,15 +83,15 @@ Object {
       },
       "vueStyle": Object {},
     },
+    "loadingScreen": Object {},
     "optimization": Object {
       "minimize": undefined,
       "minimizer": undefined,
       "runtimeChunk": "single",
       "splitChunks": Object {
-        "automaticNameDelimiter": ".",
+        "automaticNameDelimiter": "/",
         "cacheGroups": Object {},
         "chunks": "all",
-        "name": undefined,
       },
     },
     "optimizeCSS": undefined,
@@ -100,6 +105,7 @@ Object {
     "profile": false,
     "publicPath": "/_nuxt/",
     "quiet": true,
+    "serverURLPolyfill": "url",
     "splitChunks": Object {
       "commons": true,
       "layouts": false,
@@ -123,13 +129,15 @@ Object {
     "watch": Array [],
   },
   "buildDir": ".nuxt",
+  "buildModules": Array [],
   "cli": Object {
     "badgeMessages": Array [],
+    "bannerColor": "green",
   },
+  "createRequire": undefined,
   "css": Array [],
   "debug": undefined,
   "dev": false,
-  "devModules": Array [],
   "dir": Object {
     "app": "app",
     "assets": "assets",
@@ -141,21 +149,51 @@ Object {
   },
   "editor": undefined,
   "env": Object {},
+  "extendPlugins": null,
   "extensions": Array [],
+  "features": Object {
+    "asyncData": true,
+    "clientOnline": true,
+    "clientPrefetch": true,
+    "clientUseUrl": false,
+    "componentAliases": true,
+    "componentClientOnly": true,
+    "deprecations": true,
+    "fetch": true,
+    "layouts": true,
+    "meta": true,
+    "middleware": true,
+    "store": true,
+    "transitions": true,
+    "validate": true,
+  },
   "fetch": Object {
     "client": true,
     "server": true,
   },
   "generate": Object {
+    "cache": Object {
+      "globbyOptions": Object {
+        "gitignore": true,
+      },
+      "ignore": Array [],
+    },
     "concurrency": 500,
+    "crawler": true,
     "dir": "dist",
     "exclude": Array [],
     "fallback": "200.html",
     "interval": 0,
     "routes": Array [],
+    "staticAssets": Object {
+      "base": undefined,
+      "dir": "static",
+      "version": undefined,
+      "versionBase": undefined,
+    },
     "subFolders": true,
   },
-  "globalName": "nuxt",
+  "globalName": undefined,
   "globals": Object {
     "context": [Function],
     "id": [Function],
@@ -175,6 +213,7 @@ Object {
     "**/*.test.*",
     "**/*.spec.*",
   ],
+  "ignoreOptions": undefined,
   "ignorePrefix": "-",
   "layoutTransition": Object {
     "mode": "out-in",
@@ -202,7 +241,7 @@ Object {
     "server_error": "Server error",
     "server_error_details": "An error occurred in the application and your page could not be served. If you are the application owner, check your logs for details.",
   },
-  "mode": "universal",
+  "mode": undefined,
   "modern": undefined,
   "modes": Object {
     "spa": Object {
@@ -235,6 +274,8 @@ Object {
     "name": "page",
   },
   "plugins": Array [],
+  "privateRuntimeConfig": Object {},
+  "publicRuntimeConfig": Object {},
   "render": Object {
     "bundleRenderer": Object {
       "runInNewContext": undefined,
@@ -244,6 +285,7 @@ Object {
     "compressor": Object {
       "threshold": 0,
     },
+    "crossorigin": undefined,
     "csp": false,
     "dist": Object {
       "index": false,
@@ -285,10 +327,12 @@ Object {
     "mode": "history",
     "parseQuery": false,
     "prefetchLinks": true,
+    "prefetchPayloads": true,
     "routeNameSplitter": "-",
     "routes": Array [],
     "scrollBehavior": null,
     "stringifyQuery": false,
+    "trailingSlash": undefined,
   },
   "server": Object {
     "host": "localhost",
@@ -299,6 +343,7 @@ Object {
   },
   "serverMiddleware": Array [],
   "srcDir": undefined,
+  "ssr": true,
   "styleExtensions": Array [
     "css",
     "pcss",
@@ -309,6 +354,7 @@ Object {
     "sass",
     "less",
   ],
+  "target": "server",
   "test": true,
   "vue": Object {
     "config": Object {
@@ -316,13 +362,16 @@ Object {
       "silent": undefined,
     },
   },
+  "vueMeta": null,
   "watch": Array [],
   "watchers": Object {
     "chokidar": Object {
       "ignoreInitial": true,
     },
     "rewatchOnRawEvents": undefined,
-    "webpack": Object {},
+    "webpack": Object {
+      "aggregateTimeout": 1000,
+    },
   },
 }
 `;
@@ -330,10 +379,12 @@ Object {
 exports[`config should return nuxt configurations with custom env 1`] = `
 Object {
   "ErrorPage": null,
+  "_modules": Array [],
   "_nuxtConfigFile": undefined,
   "alias": Object {},
   "build": Object {
     "additionalExtensions": Array [],
+    "aggressiveCodeRemoval": false,
     "analyze": false,
     "babel": Object {
       "babelrc": false,
@@ -341,7 +392,7 @@ Object {
       "configFile": false,
     },
     "cache": false,
-    "crossorigin": undefined,
+    "corejs": "auto",
     "cssSourceMap": undefined,
     "devMiddleware": Object {},
     "extractCSS": false,
@@ -353,6 +404,7 @@ Object {
       "img": [Function],
       "video": [Function],
     },
+    "followSymlinks": false,
     "friendlyErrors": true,
     "hardSource": false,
     "hotMiddleware": Object {},
@@ -391,7 +443,9 @@ Object {
       "less": Object {},
       "pugPlain": Object {},
       "sass": Object {
-        "indentedSyntax": true,
+        "sassOptions": Object {
+          "indentedSyntax": true,
+        },
       },
       "scss": Object {},
       "stylus": Object {},
@@ -405,15 +459,15 @@ Object {
       },
       "vueStyle": Object {},
     },
+    "loadingScreen": Object {},
     "optimization": Object {
       "minimize": undefined,
       "minimizer": undefined,
       "runtimeChunk": "single",
       "splitChunks": Object {
-        "automaticNameDelimiter": ".",
+        "automaticNameDelimiter": "/",
         "cacheGroups": Object {},
         "chunks": "all",
-        "name": undefined,
       },
     },
     "optimizeCSS": undefined,
@@ -427,6 +481,7 @@ Object {
     "profile": false,
     "publicPath": "/_nuxt/",
     "quiet": true,
+    "serverURLPolyfill": "url",
     "splitChunks": Object {
       "commons": true,
       "layouts": false,
@@ -450,13 +505,15 @@ Object {
     "watch": Array [],
   },
   "buildDir": ".nuxt",
+  "buildModules": Array [],
   "cli": Object {
     "badgeMessages": Array [],
+    "bannerColor": "green",
   },
+  "createRequire": undefined,
   "css": Array [],
   "debug": undefined,
   "dev": false,
-  "devModules": Array [],
   "dir": Object {
     "app": "app",
     "assets": "assets",
@@ -468,21 +525,51 @@ Object {
   },
   "editor": undefined,
   "env": Object {},
+  "extendPlugins": null,
   "extensions": Array [],
+  "features": Object {
+    "asyncData": true,
+    "clientOnline": true,
+    "clientPrefetch": true,
+    "clientUseUrl": false,
+    "componentAliases": true,
+    "componentClientOnly": true,
+    "deprecations": true,
+    "fetch": true,
+    "layouts": true,
+    "meta": true,
+    "middleware": true,
+    "store": true,
+    "transitions": true,
+    "validate": true,
+  },
   "fetch": Object {
     "client": true,
     "server": true,
   },
   "generate": Object {
+    "cache": Object {
+      "globbyOptions": Object {
+        "gitignore": true,
+      },
+      "ignore": Array [],
+    },
     "concurrency": 500,
+    "crawler": true,
     "dir": "dist",
     "exclude": Array [],
     "fallback": "200.html",
     "interval": 0,
     "routes": Array [],
+    "staticAssets": Object {
+      "base": undefined,
+      "dir": "static",
+      "version": undefined,
+      "versionBase": undefined,
+    },
     "subFolders": true,
   },
-  "globalName": "nuxt",
+  "globalName": undefined,
   "globals": Object {
     "context": [Function],
     "id": [Function],
@@ -502,6 +589,7 @@ Object {
     "**/*.test.*",
     "**/*.spec.*",
   ],
+  "ignoreOptions": undefined,
   "ignorePrefix": "-",
   "layoutTransition": Object {
     "mode": "out-in",
@@ -529,7 +617,7 @@ Object {
     "server_error": "Server error",
     "server_error_details": "An error occurred in the application and your page could not be served. If you are the application owner, check your logs for details.",
   },
-  "mode": "universal",
+  "mode": undefined,
   "modern": undefined,
   "modes": Object {
     "spa": Object {
@@ -562,6 +650,8 @@ Object {
     "name": "page",
   },
   "plugins": Array [],
+  "privateRuntimeConfig": Object {},
+  "publicRuntimeConfig": Object {},
   "render": Object {
     "bundleRenderer": Object {
       "runInNewContext": undefined,
@@ -571,6 +661,7 @@ Object {
     "compressor": Object {
       "threshold": 0,
     },
+    "crossorigin": undefined,
     "csp": false,
     "dist": Object {
       "index": false,
@@ -612,10 +703,12 @@ Object {
     "mode": "history",
     "parseQuery": false,
     "prefetchLinks": true,
+    "prefetchPayloads": true,
     "routeNameSplitter": "-",
     "routes": Array [],
     "scrollBehavior": null,
     "stringifyQuery": false,
+    "trailingSlash": undefined,
   },
   "server": Object {
     "host": "localhost",
@@ -626,6 +719,7 @@ Object {
   },
   "serverMiddleware": Array [],
   "srcDir": undefined,
+  "ssr": true,
   "styleExtensions": Array [
     "css",
     "pcss",
@@ -636,6 +730,7 @@ Object {
     "sass",
     "less",
   ],
+  "target": "server",
   "test": true,
   "vue": Object {
     "config": Object {
@@ -643,13 +738,16 @@ Object {
       "silent": undefined,
     },
   },
+  "vueMeta": null,
   "watch": Array [],
   "watchers": Object {
     "chokidar": Object {
       "ignoreInitial": true,
     },
     "rewatchOnRawEvents": undefined,
-    "webpack": Object {},
+    "webpack": Object {
+      "aggregateTimeout": 1000,
+    },
   },
 }
 `;

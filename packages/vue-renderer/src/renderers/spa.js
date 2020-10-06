@@ -1,10 +1,10 @@
 import { extname } from 'path'
 import cloneDeep from 'lodash/cloneDeep'
-import Vue from 'vue'
 import VueMeta from 'vue-meta'
 import { createRenderer } from 'vue-server-renderer'
 import LRU from 'lru-cache'
-import { isModernRequest } from '@nuxt/utils'
+import devalue from '@nuxt/devalue'
+import { TARGETS, isModernRequest } from '@nuxt/utils'
 import BaseRenderer from './base'
 
 export default class SPARenderer extends BaseRenderer {
@@ -13,33 +13,24 @@ export default class SPARenderer extends BaseRenderer {
 
     this.cache = new LRU()
 
-    // Add VueMeta to Vue (this is only for SPA mode)
-    // See app/index.js
-    Vue.use(VueMeta, {
+    this.vueMetaConfig = {
+      ssrAppId: '1',
+      ...this.options.vueMeta,
       keyName: 'head',
       attribute: 'data-n-head',
       ssrAttribute: 'data-n-head-ssr',
       tagIDKeyName: 'hid'
-    })
+    }
   }
 
   createRenderer () {
     return createRenderer()
   }
 
-  async getMeta () {
-    const vm = new Vue({
-      render: h => h(), // Render empty html tag
-      head: this.options.head || {}
-    })
-    await this.vueRenderer.renderToString(vm)
-    return vm.$meta().inject()
-  }
-
   async render (renderContext) {
-    const { url = '/', req = {}, _generate } = renderContext
+    const { url = '/', req = {} } = renderContext
     const modernMode = this.options.modern
-    const modern = (modernMode && _generate) || isModernRequest(req, modernMode)
+    const modern = (modernMode && this.options.target === TARGETS.static) || isModernRequest(req, modernMode)
     const cacheKey = `${modern ? 'modern:' : 'legacy:'}${url}`
     let meta = this.cache.get(cacheKey)
 
@@ -54,35 +45,64 @@ export default class SPARenderer extends BaseRenderer {
       HEAD_ATTRS: '',
       BODY_ATTRS: '',
       HEAD: '',
+      BODY_SCRIPTS_PREPEND: '',
       BODY_SCRIPTS: ''
     }
 
-    // Get vue-meta context
-    const m = await this.getMeta()
+    if (this.options.features.meta) {
+      // Get vue-meta context
+      renderContext.head = typeof this.options.head === 'function'
+        ? this.options.head()
+        : cloneDeep(this.options.head)
+    }
 
-    // HTML_ATTRS
-    meta.HTML_ATTRS = m.htmlAttrs.text()
+    // Allow overriding renderContext
+    await this.serverContext.nuxt.callHook('vue-renderer:spa:prepareContext', renderContext)
 
-    // HEAD_ATTRS
-    meta.HEAD_ATTRS = m.headAttrs.text()
+    if (this.options.features.meta) {
+      const m = VueMeta.generate(renderContext.head || {}, this.vueMetaConfig)
 
-    // BODY_ATTRS
-    meta.BODY_ATTRS = m.bodyAttrs.text()
+      // HTML_ATTRS
+      meta.HTML_ATTRS = m.htmlAttrs.text()
 
-    // HEAD tags
-    meta.HEAD =
-      m.title.text() +
-      m.meta.text() +
-      m.link.text() +
-      m.style.text() +
-      m.script.text() +
-      m.noscript.text()
+      // HEAD_ATTRS
+      meta.HEAD_ATTRS = m.headAttrs.text()
 
-    // BODY_SCRIPTS
-    meta.BODY_SCRIPTS = m.script.text({ body: true }) + m.noscript.text({ body: true })
+      // BODY_ATTRS
+      meta.BODY_ATTRS = m.bodyAttrs.text()
+
+      // HEAD tags
+      meta.HEAD =
+        m.title.text() +
+        m.meta.text() +
+        m.link.text() +
+        m.style.text() +
+        m.script.text() +
+        m.noscript.text()
+
+      // Add <base href=""> meta if router base specified
+      if (this.options._routerBaseSpecified) {
+        meta.HEAD += `<base href="${this.options.router.base}">`
+      }
+
+      // BODY_SCRIPTS (PREPEND)
+      meta.BODY_SCRIPTS_PREPEND =
+        m.meta.text({ pbody: true }) +
+        m.link.text({ pbody: true }) +
+        m.style.text({ pbody: true }) +
+        m.script.text({ pbody: true }) +
+        m.noscript.text({ pbody: true })
+
+      // BODY_SCRIPTS (APPEND)
+      meta.BODY_SCRIPTS =
+        m.meta.text({ body: true }) +
+        m.link.text({ body: true }) +
+        m.style.text({ body: true }) +
+        m.script.text({ body: true }) +
+        m.noscript.text({ body: true })
+    }
 
     // Resources Hints
-
     meta.resourceHints = ''
 
     const { resources: { modernManifest, clientManifest } } = this.serverContext
@@ -95,7 +115,7 @@ export default class SPARenderer extends BaseRenderer {
 
       // Preload initial resources
       if (Array.isArray(manifest.initial)) {
-        const { crossorigin } = this.options.build
+        const { crossorigin } = this.options.render
         const cors = `${crossorigin ? ` crossorigin="${crossorigin}"` : ''}`
 
         meta.preloadFiles = manifest.initial
@@ -131,7 +151,13 @@ export default class SPARenderer extends BaseRenderer {
       }
     }
 
-    const APP = `<div id="${this.serverContext.globals.id}">${this.serverContext.resources.loadingHTML}</div>${meta.BODY_SCRIPTS}`
+    // Serialize state (runtime config)
+    let APP = `${meta.BODY_SCRIPTS_PREPEND}<div id="${this.serverContext.globals.id}">${this.serverContext.resources.loadingHTML}</div>${meta.BODY_SCRIPTS}`
+
+    APP += `<script>window.${this.serverContext.globals.context}=${devalue({
+      config: renderContext.runtimeConfig.public,
+      staticAssetsBase: renderContext.staticAssetsBase
+    })}</script>`
 
     // Prepare template params
     const templateParams = {
@@ -174,7 +200,7 @@ export default class SPARenderer extends BaseRenderer {
       return 'script'
     } else if (ext === 'css') {
       return 'style'
-    } else if (/jpe?g|png|svg|gif|webp|ico/.test(ext)) {
+    } else if (/jpe?g|png|svg|gif|webp|ico|avif/.test(ext)) {
       return 'image'
     } else if (/woff2?|ttf|otf|eot/.test(ext)) {
       return 'font'
